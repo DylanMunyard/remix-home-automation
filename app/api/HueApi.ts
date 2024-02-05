@@ -2,7 +2,7 @@ import fetch from 'node-fetch';
 import https from 'https';
 
 // process.env.HUE_APPLICATION_KEY could be the way you have it stored in config as environment variable
-const hueApplicationKey = process.env.HUE_APPLICATION_KEY ?? "key";
+const hueApplicationKey = process.env.HUE_APPLICATION_KEY ?? "";
 
 const apiBase = 'https://192.168.1.110/clip/v2';
 

@@ -1,8 +1,9 @@
 import {json, MetaFunction, TypedResponse} from "@remix-run/node";
-import { useLoaderData } from "@remix-run/react";
-import { Sidebar, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow } from 'flowbite-react';
+import { useLoaderData, useSearchParams } from "@remix-run/react";
+import {Sidebar, Table, TableBody, TableCell, TableHead, TableHeadCell, TableRow} from 'flowbite-react';
 import {Light, getHome, Zone} from "~/api/HueApi"
 import LightDetails from "~/routes/lights.$id.details";
+import React, {useEffect, useState} from "react";
 
 export const meta: MetaFunction = () => {
   return [
@@ -26,6 +27,33 @@ const distributeLights = (zones: Zone[], lights: Light[]) => {
 export default function Index() {
   const data = useLoaderData<typeof loader>();
   const zonesWithLights = distributeLights(data.zones, data.lights);
+  const [searchParams, setSearchParams] = useSearchParams();
+  const [viewLightId, setViewLightId] = useState<string | null>(null);
+
+  function showLight(evt: React.MouseEvent<HTMLAnchorElement>, lightId: string) {
+    evt.preventDefault();
+
+    setSearchParams((params) => {
+      params.set("lightId", lightId);
+      return params;
+    })
+  }
+
+  function hideLight() {
+    setSearchParams((params) => {
+      params.delete("lightId");
+      return params;
+    })
+  }
+
+  useEffect(() => {
+    const lightId = searchParams.get("lightId");
+    if (lightId) {
+      setViewLightId(lightId);
+    } else {
+      setViewLightId(null);
+    }
+  }, [searchParams]);
 
   return (
       <div className="mx-auto flex flex-row">
@@ -61,11 +89,11 @@ export default function Index() {
                             <div className="bg-green-500 w-10 h-10 rounded-full"/>
                             <div className="ps-3">
                               <div className="text-base font-semibold">
-                                <LightDetails partialLight={light} />
-                                {/*<a href={`/lights/${light.id}`}
+                                <a href={`/lights/${light.id}/details`}
+                                   onClick={(evt) => showLight(evt, light.id)}
                                    className="hover:text-blue-600 dark:hover:text-blue-500 hover:underline hover:cursor-pointer">
                                   {light.metadata?.name}
-                                </a>*/}
+                                </a>
                               </div>
                               <div className="font-normal text-gray-500">Hue filament bulb</div>
                             </div>
@@ -89,6 +117,9 @@ export default function Index() {
             </div>
           ))}
         </div>
+
+        <LightDetails partialLight={ { id: viewLightId as string }} onClose={hideLight} />
+
       </div>
   );
 }

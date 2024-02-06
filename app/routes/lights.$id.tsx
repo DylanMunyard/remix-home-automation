@@ -1,27 +1,19 @@
-import {ActionFunctionArgs, json, LoaderFunctionArgs, MetaFunction} from "@remix-run/node";
-import {getLight, HueError, Light, updateLight} from "~/api/HueApi";
-import {useFetcher, useLoaderData, useActionData} from "@remix-run/react";
-import {Alert, Button, Card, Label, List, RangeSlider, TextInput} from "flowbite-react";
-import React, {useState} from "react";
+import {useFetcher, useLoaderData, useNavigate, useParams} from "@remix-run/react";
+import {ActionFunctionArgs, json, LoaderFunctionArgs} from "@remix-run/node";
+import {getLight, Light, updateLight} from "~/api/HueApi";
+import {useEffect, useState} from "react";
+import {Button, Label, Modal, RangeSlider, Spinner} from "flowbite-react";
 
-export const loader = async ({
-  params,
-} : LoaderFunctionArgs) => {
+export async function loader({
+   params,
+}: LoaderFunctionArgs) {
   const light = await getLight(params.id as string);
   return json(light);
 }
 
-export const meta: MetaFunction = () => {
-  return [
-    { title: "Home Life" },
-    { name: "description", content: "Welcome to your smart home" },
-  ];
-};
-
 export const action = async ({
-  request,
-}: ActionFunctionArgs) => {
-  const body = await request.formData();
+ request,
+}: ActionFunctionArgs) => {const body = await request.formData();
   const id = body.get("id") as string;
   const brightness = body.get("brightness") as string;
   const { errors, data } = await getLight(id);
@@ -50,68 +42,66 @@ export const action = async ({
   }
 
   return json({ errors: [{description: 'What are you trying to do?'}] });
-}
+};
 
-export default function Index() {
-  const { errors: loaderErrors, data } = useLoaderData<typeof loader>();
+export default function LightDetails() {
+  const data = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
-  const [errors, setErrors] = useState<string[] | null>(null);
+  const [light, setLight] = useState<Light | null>(null);
+  const navigate = useNavigate();
 
-  React.useEffect(() => {
-    if (fetcher.data?.errors.length) {
-      setErrors(fetcher.data.errors.map((e) => e.description) as string[]);
-    } else {
-      setErrors(null);
+  const params = useParams<{ id: string }>();
+  const lightId = params.id ?? "";
+
+  useEffect(() => {
+    if (data.data?.length) { // loader seems to cache previous returned value even without a GET
+      setLight(data.data[0]);
     }
-  }, [fetcher.data]);
+  }, [data]);
 
-  React.useEffect(() => {
-    if (loaderErrors.length) {
-      setErrors(loaderErrors.map((e) => e.description) as string[]);
-    }
-  }, [loaderErrors]);
-
-  return (
-    <div className="flex items-center h-screen justify-center w-full">
-      <Card className="max-w-[480px]">
-        <div className="flex flex-col items-center pb-10">
-          {errors ? (
-            <Alert color="failure">
-              <List>
-                {errors.map((error, index) => (
-                  <List.Item key={index}>{error}</List.Item>
-                ))}
-              </List>
-            </Alert>
-          ) : null}
-          {data.length > 0 ? (<>
-            <div className="mb-1 rounded-full w-48 h-48 bg-green-500"></div>
-            <h5 className="mb-1 text-xl font-medium text-gray-900 dark:text-white">{data[0].metadata?.name}</h5>
-            <span className="text-sm text-gray-500 dark:text-gray-400">Downstairs, Office</span>
-            <div className="mt-4 flex items-center space-x-3 lg:mt-6">
-              <fetcher.Form method="post">
-                <input type="hidden" name="id" value={data[0].id} />
-                <input type="hidden" name="intent" value="toggle" />
-                <Button type={"submit"} color="blue">{data[0].on?.on ?? false ? "Off" : "On"}</Button>
-              </fetcher.Form>
-              <div>
-                <div className="mb-1 block">
-                  <Label className="text-gray-900 dark:text-white" htmlFor="lg-range" value="Brightness"/>
-                </div>
-
-                <fetcher.Form method="post">
-                  <input type="hidden" name="id" value={data[0].id}/>
-                  <input type="hidden" name="intent" value="brightness"/>
-                  <RangeSlider name="brightness" sizing="lg"
-                               min={1} max={100}
-                               defaultValue={data[0].dimming?.brightness}
-                               onClick={(event) => fetcher.submit(event.currentTarget.form)}></RangeSlider>
+  return (<>
+    {!light ? (
+      <Modal dismissible show={true} onClose={() => navigate(-1)}>
+        <Modal.Header>
+          <div role="status" className="max-w-sm animate-pulse">
+            <div className="h-2.5 bg-gray-200 rounded-full dark:bg-gray-700 w-48 mb-4"></div>
+          </div>
+        </Modal.Header>
+        <Modal.Body>
+          <div className="space-y-6">
+            <Spinner color="pink" aria-label="Hang in there. Retrieving state of light." />
+          </div>
+        </Modal.Body>
+      </Modal>
+      ) : light ? (
+        <Modal dismissible show={true} onClose={() => navigate(-1)}>
+          <Modal.Header>{light.metadata?.name}</Modal.Header>
+          <Modal.Body>
+              <div className="flex items-center space-x-3">
+                <fetcher.Form method="post" action={`/lights/${lightId}`}>
+                  <input type="hidden" name="id" value={light.id}/>
+                  <input type="hidden" name="intent" value="toggle"/>
+                  <Button type={"submit"} color="blue">{light.on.on ? "Off" : "On"}</Button>
                 </fetcher.Form>
+                <div>
+                  <div className="mb-1 block">
+                    <Label className="text-gray-900 dark:text-white" htmlFor="lg-range" value="Brightness"/>
+                  </div>
+
+                  <fetcher.Form method="post" action={`/lights/${lightId}`}>
+                    <input type="hidden" name="id" value={light.id}/>
+                    <input type="hidden" name="intent" value="brightness"/>
+                    <RangeSlider name="brightness" sizing="lg"
+                                 min={1} max={100}
+                                 defaultValue={light.dimming?.brightness}
+                                 onClick={(event) => fetcher.submit(event.currentTarget.form)}></RangeSlider>
+                  </fetcher.Form>
+                </div>
               </div>
-            </div>
-          </>) : null}
-        </div>
-      </Card>
-    </div>
-  )
+          </Modal.Body>
+        </Modal>
+    ) : null
+    }
+    </>
+  );
 }

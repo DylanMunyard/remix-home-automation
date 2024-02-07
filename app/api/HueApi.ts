@@ -42,6 +42,18 @@ export interface Light extends HueResource {
     powerup: PowerUp | null;
 }
 
+export interface GroupedLight extends HueResource {
+    on: On;
+    dimming: Dimming | null;
+    dimming_delta: DimmingDelta | null;
+    color_temperature: ColorTemperature | null;
+    color_temperature_delta: ColorTemperatureDelta | null;
+    color: Color | null;
+    dynamics: Dynamics | null;
+    alert: Alert | null;
+    signaling: Signaling | null;
+}
+
 export interface Gradient {
     points: GradientPoint[];
     mode: GradientMode;
@@ -225,79 +237,53 @@ const agent = new https.Agent({
     rejectUnauthorized: false
 });
 
-export async function getHome() : Promise<{ lights: Light[], zones: Zone[] }> {
+export async function getHome() : Promise<{ lights: Light[], zones: Zone[], groups: GroupedLight[] }> {
+    console.info("Get lights");
+    const lights = get<Light>(`${apiBase}/resource/light`);
+    const zones = get<Zone>(`${apiBase}/resource/zone`);
+    const groups = get<GroupedLight>(`${apiBase}/resource/grouped_light`);
 
-    try {
-        let response = await fetch(`${apiBase}/resource/light`, {
-            method: 'GET',
-            agent,
-            headers: {
-                'hue-application-key': hueApplicationKey
-            }
-        });
+    const thing = await Promise.all([lights, zones, groups])
+      .then(([lights, zones, groups]) => {
+          return { lights: lights.data, zones: zones.data, groups: groups.data };
+      }).catch(reason => {
+          console.error(`get home data failed: ${reason}`);
+          return { lights: [], zones: [], groups: [] };
+      });
 
-        const lightsResponse : HueResponse<Light> = await response.json() as HueResponse<Light>;
-        if (lightsResponse.errors.length > 0) {
-            console.error('Error getting lights', lightsResponse.errors.join(", "));
-        }
-
-        response = await fetch(`${apiBase}/resource/zone`, {
-            method: 'GET',
-            agent,
-            headers: {
-                'hue-application-key': hueApplicationKey
-            }
-        });
-
-        const zonesResponse : HueResponse<Zone> = await response.json() as HueResponse<Zone>;
-        if (zonesResponse.errors.length > 0) {
-            console.error('Error getting zones', zonesResponse.errors.join(", "));
-        }
-        return { lights: lightsResponse.data, zones: zonesResponse.data };
-    } catch (error) {
-        console.error(`Hue API Error: ${error}`);
-    }
-
-    return { lights: [], zones: [] };
+    return thing;
 }
 
 export async function getLight(id: string) : Promise<HueResponse<Light>> {
-
-    try {
-        const response = await fetch(`${apiBase}/resource/light/${id}`, {
-            method: 'GET',
-            agent,
-            headers: {
-                'hue-application-key': hueApplicationKey
-            }
-        });
-
-        const lightResponse : HueResponse<Light> = await response.json() as HueResponse<Light>;
-        if (lightResponse.errors.length > 0 || lightResponse.data.length === 0) {
-            console.error('Error getting lights', lightResponse.errors.join(", "));
-        }
-        console.info(JSON.stringify(lightResponse.data));
-        return lightResponse;
-    } catch (error) {
-        console.error(`Hue API Error: ${error}`);
-        return { errors: [{ description: "Hue API error" }], data: [] };
-    }
+    return get<Light>(`${apiBase}/resource/light/${id}`);
 }
 
 export async function updateLight(light: Partial<Light>) : Promise<HueResponse<ResourceIdentifier>> {
+    return put(light, `${apiBase}/resource/light/${light.id}`);
+}
+
+export async function getGroupedLight(id: string) : Promise<HueResponse<Light>> {
+    return get<Light>(`${apiBase}/resource/grouped_light/${id}`);
+}
+
+export async function updateGroupedLight(group: Partial<GroupedLight>) : Promise<HueResponse<ResourceIdentifier>> {
+    return put(group, `${apiBase}/resource/grouped_light/${group.id}`);
+}
+
+async function put<T>(body : T, api: string)  : Promise<HueResponse<ResourceIdentifier>> {
     try {
-        console.info(JSON.stringify(light));
-        const response = await fetch(`${apiBase}/resource/light/${light.id}`, {
+        console.info(JSON.stringify(body));
+        const response = await fetch(api, {
             method: 'PUT',
             agent,
             headers: {
                 'Content-Type': 'application/json',
                 'hue-application-key': hueApplicationKey
             },
-            body: JSON.stringify(light)
+            body: JSON.stringify(body)
         });
 
-        const apiResponse : HueResponse<ResourceIdentifier> = await response.json() as HueResponse<ResourceIdentifier>;
+        const apiResponse: HueResponse<ResourceIdentifier> = await response.json() as HueResponse<ResourceIdentifier>;
         if (apiResponse.errors.length > 0 || apiResponse.data.length === 0) {
             console.error('Error update lights', apiResponse.errors.map(error => error.description).join(", "));
         }
@@ -307,4 +293,26 @@ export async function updateLight(light: Partial<Light>) : Promise<HueResponse<R
     }
 
     throw new Error("Hue API Error");
+}
+
+async function get<T>(api: string) : Promise<HueResponse<T>> {
+    try {
+        const apiCall = await fetch(api, {
+            method: 'GET',
+            agent,
+            headers: {
+                'hue-application-key': hueApplicationKey
+            }
+        });
+
+        const response : HueResponse<T> = await apiCall.json() as HueResponse<T>;
+        if (response.errors.length > 0 || response.data.length === 0) {
+            console.error(`Error from api ${api}:`, response.errors.join(", "));
+        }
+        console.info(JSON.stringify(response.data));
+        return response;
+    } catch (error) {
+        console.error(`Hue API Error: ${error}`);
+        return { errors: [{ description: "Hue API error" }], data: [] };
+    }
 }

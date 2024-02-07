@@ -14,11 +14,13 @@
     "@remix-run/node": "^2.5.1",
     "@remix-run/react": "^2.5.1",
     "@remix-run/serve": "^2.5.1",
+    "@uiw/react-color-wheel": "^2.0.6",
     "flowbite": "^2.2.1",
     "flowbite-react": "^0.7.2",
     "isbot": "^4.1.0",
     "react": "^18.2.0",
-    "react-dom": "^18.2.0"
+    "react-dom": "^18.2.0",
+    "react-icons": "^5.0.1"
   },
   "devDependencies": {
     "@remix-run/dev": "^2.5.1",

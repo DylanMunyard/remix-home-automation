@@ -238,20 +238,26 @@ const agent = new https.Agent({
 });
 
 export async function getHome() : Promise<{ lights: Light[], zones: Zone[], groups: GroupedLight[] }> {
-    console.info("Get lights");
-    const lights = get<Light>(`${apiBase}/resource/light`);
-    const zones = get<Zone>(`${apiBase}/resource/zone`);
-    const groups = get<GroupedLight>(`${apiBase}/resource/grouped_light`);
+    try {
+        const lights = get<Light>(`${apiBase}/resource/light`);
+        const zones = get<Zone>(`${apiBase}/resource/zone`);
+        const groups = get<GroupedLight>(`${apiBase}/resource/grouped_light`);
 
-    const thing = await Promise.all([lights, zones, groups])
-      .then(([lights, zones, groups]) => {
-          return { lights: lights.data, zones: zones.data, groups: groups.data };
-      }).catch(reason => {
-          console.error(`get home data failed: ${reason}`);
-          return { lights: [], zones: [], groups: [] };
-      });
+        /*await new Promise((resolve) => setTimeout(resolve, 3000));*/
 
-    return thing;
+        const apiPromise = await Promise.all([lights, zones, groups])
+          .then(([lights, zones, groups]) => {
+              return {lights: lights.data, zones: zones.data, groups: groups.data};
+          }).catch(reason => {
+              console.error(`get home data failed: ${reason}`);
+              return {lights: [], zones: [], groups: []};
+          });
+
+        return apiPromise;
+    } catch (ex) {
+        console.error(ex);
+        return new Promise((resolve) => resolve({lights: [], zones: [], groups: []}));
+    }
 }
 
 export async function getLight(id: string) : Promise<HueResponse<Light>> {

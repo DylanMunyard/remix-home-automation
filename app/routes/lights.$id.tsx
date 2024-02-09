@@ -2,8 +2,11 @@ import {Await, useFetcher, useLoaderData, useNavigate} from "@remix-run/react";
 import Wheel from "@uiw/react-color-wheel";
 import {ActionFunctionArgs, defer, json, LoaderFunctionArgs, TypedDeferredData} from "@remix-run/node";
 import {getLight, HueResponse, Light, updateLight} from "~/api/HueApi";
-import React, {Suspense, useEffect, useState} from "react";
+import React, {Suspense, useState} from "react";
 import {Label, Modal, RangeSlider, Spinner, ToggleSwitch} from "flowbite-react";
+import {hsvaToRgba, ColorResult} from "@uiw/color-convert";
+import {HsvaColor} from "@uiw/color-convert/src";
+import { rgbaToXy } from "~/colour/Conversions";
 
 export async function loader({
    params,
@@ -41,6 +44,21 @@ export const action = async ({
       const putResponse = await updateLight(light);
       return json({ errors: putResponse.errors });
     }
+    case 'colour': {
+      light.on = { on: true };
+      const x = parseFloat(body.get("x") as string);
+      const y = parseFloat(body.get("y") as string);
+      if (light.color) {
+        light.color.xy = {x, y};
+      } else {
+        // @ts-expect-error: on update the Gamut is not writeable
+        light.color = {
+          xy: { x, y }
+        }
+      }
+      const putResponse = await updateLight(light);
+      return json({ errors: putResponse.errors });
+    }
   }
 
   return json({ errors: [{description: 'What are you trying to do?'}] });
@@ -51,6 +69,27 @@ export default function LightDetails() {
   const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
   const [hsva, setHsva] = useState({ h: 214, s: 43, v: 90, a: 1 });
+  const [xy, setXy] = useState({x: 0, y: 0});
+
+  React.useEffect(() => {
+    if (!hsva) return;
+
+    const rgba = hsvaToRgba(hsva);
+    setXy(rgbaToXy(rgba));
+  }, [hsva]);
+
+  React.useEffect(() => {
+    fetcher.submit({
+      "id": "8e035c51-ae32-4492-a4c6-1d3223a30fb7",
+      "intent": "colour",
+      "x": xy.x,
+      "y": xy.y
+    }, {
+      method: "POST",
+      action: `/lights/8e035c51-ae32-4492-a4c6-1d3223a30fb7`
+    });
+  }, [xy]);
+
   const modalSize = "md";
 
   return (
@@ -64,7 +103,7 @@ export default function LightDetails() {
               <Wheel
                 className="mb-4"
                 color={hsva}
-                onChange={(color) => setHsva({...hsva, ...color.hsva})}
+                onChange={(color : ColorResult) => setHsva(color.hsva as HsvaColor)}
                 width={196} height={196}/>
 
               <div className="flex items-center space-x-3">

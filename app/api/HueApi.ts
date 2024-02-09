@@ -245,15 +245,13 @@ export async function getHome() : Promise<{ lights: Light[], zones: Zone[], grou
 
         /*await new Promise((resolve) => setTimeout(resolve, 3000));*/
 
-        const apiPromise = await Promise.all([lights, zones, groups])
+        return await Promise.all([lights, zones, groups])
           .then(([lights, zones, groups]) => {
               return {lights: lights.data, zones: zones.data, groups: groups.data};
           }).catch(reason => {
               console.error(`get home data failed: ${reason}`);
               return {lights: [], zones: [], groups: []};
           });
-
-        return apiPromise;
     } catch (ex) {
         console.error(ex);
         return new Promise((resolve) => resolve({lights: [], zones: [], groups: []}));
@@ -315,7 +313,6 @@ async function get<T>(api: string) : Promise<HueResponse<T>> {
         if (response.errors.length > 0 || response.data.length === 0) {
             console.error(`Error from api ${api}:`, response.errors.join(", "));
         }
-        console.info(JSON.stringify(response.data));
         return response;
     } catch (error) {
         console.error(`Hue API Error: ${error}`);

@@ -1,5 +1,5 @@
-import {ActionFunctionArgs, defer, json, MetaFunction, TypedDeferredData, TypedResponse} from "@remix-run/node";
-import {Await, Link, Outlet, useActionData, useFetcher, useLoaderData, useNavigation} from "@remix-run/react";
+import {ActionFunctionArgs, defer, json, MetaFunction, TypedDeferredData} from "@remix-run/node";
+import {Await, Link, Outlet, useFetcher, useLoaderData} from "@remix-run/react";
 import ErrorComponent from "~/components/ErrorBoundary";
 import {
   RangeSlider,
@@ -21,7 +21,7 @@ import {
   updateGroupedLight, HueError
 } from "~/api/HueApi";
 import React, {Suspense, useState} from "react";
-import HueErrors from "~/components/HueErrors";
+import HueErrorToast from "~/components/HueErrorToast";
 import {HiOutlineHome} from "react-icons/hi2";
 
 export const meta: MetaFunction = () => {
@@ -155,7 +155,7 @@ export default function Index() {
               </Sidebar>
 
               <div className="mt-5 mb-20 w-3/5 relative overflow-x-auto shadow-md sm:rounded-lg">
-                <HueErrors errors={errors} />
+                <HueErrorToast errors={errors} />
 
                 {distributeLights(data).map((zone) => (
                   <div key={zone.id}>
@@ -302,10 +302,8 @@ function SkeletonSidebar({num_items}: { num_items: number }) {
         <Sidebar.ItemGroup>
           <h2 className="font-bold text-xl leading-tight">Zones</h2>
           <div role="status" className="max-w-sm animate-pulse">
-            {Array.from({length: num_items}).map(() => (
-              <>
-                <div className="h-2 bg-gray-200 rounded-full dark:bg-gray-700 max-w-[128px] my-5"></div>
-              </>
+            {Array.from({length: num_items}).map((_item, idx) => (
+              <div key={idx} className="h-2 bg-gray-200 rounded-full dark:bg-gray-700 max-w-[128px] my-5"></div>
             ))}
           </div>
         </Sidebar.ItemGroup>
@@ -322,8 +320,8 @@ function SkeletonTable({rows}: { rows: number }) {
         <TableHeadCell>Status</TableHeadCell>
       </TableHead>
       <TableBody className="divide-y">
-        {Array.from({length: rows}).map(() => (
-          <TableRow className="bg-white dark:border-gray-700 dark:bg-gray-800">
+        {Array.from({length: rows}).map((_item, idx) => (
+          <TableRow key={idx} className="bg-white dark:border-gray-700 dark:bg-gray-800">
             <TableCell
               className="flex items-center px-6 py-4 whitespace-nowrap font-medium text-gray-900 dark:text-white">
               <div className="bg-green-500 w-10 h-10 rounded-full"/>
@@ -347,7 +345,7 @@ function SkeletonTable({rows}: { rows: number }) {
 
 function HomeNoBueno() {
   return (
-    <div className="flex items-center justify-center h-screen">
+    <div className="mx-auto flex items-center justify-center h-screen">
       <section className="bg-white dark:bg-gray-500 max-w-[300px]">
         <div className="py-8 px-4 max-w-screen-xl text-center lg:py-16">
           <HiOutlineHome size={192} className="mx-auto block fill-green-300"/>

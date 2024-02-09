@@ -2,11 +2,11 @@ import {Await, useFetcher, useLoaderData, useNavigate} from "@remix-run/react";
 import Wheel from "@uiw/react-color-wheel";
 import {ActionFunctionArgs, defer, json, LoaderFunctionArgs, TypedDeferredData} from "@remix-run/node";
 import {getLight, HueResponse, Light, updateLight} from "~/api/HueApi";
-import React, {Suspense, useState} from "react";
+import React, {Suspense, useState, useMemo } from "react";
 import {Label, Modal, RangeSlider, Spinner, ToggleSwitch} from "flowbite-react";
 import {hsvaToRgba, ColorResult} from "@uiw/color-convert";
-import {HsvaColor} from "@uiw/color-convert/src";
 import { rgbaToXy } from "~/colour/Conversions";
+import throttle from 'lodash.throttle';
 
 export async function loader({
    params,
@@ -71,12 +71,18 @@ export default function LightDetails() {
   const [hsva, setHsva] = useState({ h: 214, s: 43, v: 90, a: 1 });
   const [xy, setXy] = useState({x: 0, y: 0});
 
-  React.useEffect(() => {
-    if (!hsva) return;
-
-    const rgba = hsvaToRgba(hsva);
+  const throttledColourHandler = useMemo(() => throttle((colour: ColorResult) => {
+    const rgba = hsvaToRgba(colour.hsva);
     setXy(rgbaToXy(rgba));
-  }, [hsva]);
+  }, 1000), []);
+
+  // Stop the invocation of the debounced function
+  // after unmounting
+  React.useEffect(() => {
+    return () => {
+      throttledColourHandler.cancel();
+    }
+  }, []);
 
   React.useEffect(() => {
     fetcher.submit({
@@ -103,8 +109,8 @@ export default function LightDetails() {
               <Wheel
                 className="mb-4"
                 color={hsva}
-                onChange={(color : ColorResult) => setHsva(color.hsva as HsvaColor)}
-                width={196} height={196}/>
+                onChange={(colour: ColorResult) => { setHsva(colour.hsva); throttledColourHandler(colour); }}
+                width={196} height={196} />
 
               <div className="flex items-center space-x-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"

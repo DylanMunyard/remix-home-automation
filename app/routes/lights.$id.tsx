@@ -1,17 +1,18 @@
-import {Await, useFetcher, useLoaderData, useNavigate} from "@remix-run/react";
+import {Await, useAsyncValue, useFetcher, useLoaderData, useNavigate} from "@remix-run/react";
 import Wheel from "@uiw/react-color-wheel";
 import {ActionFunctionArgs, defer, json, LoaderFunctionArgs, TypedDeferredData} from "@remix-run/node";
 import {getLight, HueResponse, Light, updateLight} from "~/api/HueApi";
 import React, {Suspense, useState, useMemo } from "react";
 import {Label, Modal, RangeSlider, Spinner, ToggleSwitch} from "flowbite-react";
-import {hsvaToRgba, ColorResult} from "@uiw/color-convert";
-import { rgbaToXy } from "~/colour/Conversions";
+import {rgbaToHsva, hsvaToRgba, ColorResult, HsvaColor} from "@uiw/color-convert";
+import {rgbaToXy, xyToRgba} from "~/colour/Conversions";
 import throttle from 'lodash.throttle';
 
 export async function loader({
    params,
 }: LoaderFunctionArgs) : Promise<TypedDeferredData<{ data: Promise<HueResponse<Light>> }>>{
   const light = getLight(params.id as string);
+
   return defer({ data: light });
 }
 
@@ -68,12 +69,28 @@ export default function LightDetails() {
   const { data } = useLoaderData<typeof loader>();
   const fetcher = useFetcher<typeof action>();
   const navigate = useNavigate();
-  const [hsva, setHsva] = useState({ h: 214, s: 43, v: 90, a: 1 });
-  const [xy, setXy] = useState({x: 0, y: 0});
+  const [hsva, setHsva] = useState<HsvaColor | null>(null);
 
-  const throttledColourHandler = useMemo(() => throttle((colour: ColorResult) => {
+  React.useEffect(() => {
+    data.then((response: HueResponse<Light>) => {
+      if (!response.data[0].color) return;
+      const rgba = xyToRgba(response.data[0].color.xy)
+      setHsva(rgbaToHsva(rgba));
+    })
+  }, [data]);
+
+  const throttledColourHandler = useMemo(() => throttle((id: string, colour: ColorResult) => {
     const rgba = hsvaToRgba(colour.hsva);
-    setXy(rgbaToXy(rgba));
+    const {x, y} = rgbaToXy(rgba);
+    fetcher.submit({
+      id,
+      x,
+      y,
+      "intent": "colour"
+    }, {
+      method: "POST",
+      action: `/lights/${id}`
+    });
   }, 1000), []);
 
   // Stop the invocation of the debounced function
@@ -83,18 +100,6 @@ export default function LightDetails() {
       throttledColourHandler.cancel();
     }
   }, []);
-
-  React.useEffect(() => {
-    fetcher.submit({
-      "id": "8e035c51-ae32-4492-a4c6-1d3223a30fb7",
-      "intent": "colour",
-      "x": xy.x,
-      "y": xy.y
-    }, {
-      method: "POST",
-      action: `/lights/8e035c51-ae32-4492-a4c6-1d3223a30fb7`
-    });
-  }, [xy]);
 
   const modalSize = "md";
 
@@ -106,11 +111,13 @@ export default function LightDetails() {
           <Modal.Header>{api.data[0].metadata?.name}</Modal.Header>
           <Modal.Body>
             <div className="flex flex-col items-center justify-center h-full">
-              <Wheel
-                className="mb-4"
-                color={hsva}
-                onChange={(colour: ColorResult) => { setHsva(colour.hsva); throttledColourHandler(colour); }}
-                width={196} height={196} />
+              {hsva ? (
+                <Wheel
+                  className="mb-4"
+                  color={hsva}
+                  onChange={(colour: ColorResult) => { setHsva(colour.hsva); throttledColourHandler(api.data[0].id, colour); }}
+                  width={196} height={196} />
+              ) : <div className="rounded-full w-[196px] h-[196px] animate-pulse bg-gray-200"></div> }
 
               <div className="flex items-center space-x-3">
                 <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"

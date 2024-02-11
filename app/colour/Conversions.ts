@@ -1,4 +1,5 @@
 import {RgbaColor} from "@uiw/color-convert/src";
+import {XyPosition} from "~/api/HueApi";
 
 export function rgbaToXy(rgba: RgbaColor) : { x: number, y: number } {
   /* handy function to check your values: https://viereck.ch/hue-xy-rgb/ */
@@ -21,4 +22,24 @@ export function rgbaToXy(rgba: RgbaColor) : { x: number, y: number } {
   const y = Y / (X + Y + Z);
 
   return { x, y };
+}
+
+export function xyToRgba(xy: XyPosition): RgbaColor {
+
+  // Reconstruct the XYZ parameters
+  const Y = 1.0;
+  const X = (Y / xy.y) * xy.x;
+  const Z = (Y / xy.y) * (1 - xy.x - xy.y);
+
+  // Reconstruct the normalized RGB values
+  const red = X * 3.2406 - Y * 1.5372 - Z * 0.4986;
+  const green = -X * 0.9689 + Y * 1.8758 + Z * 0.0415;
+  const blue = X * 0.0557 - Y * 0.2040 + Z * 1.0570;
+
+  // Convert them to original sRGB values
+  const r = (red <= 0.0031308) ? 12.92 * red : (1.0 + 0.055) * Math.pow(red, (1.0 / 2.4)) - 0.055;
+  const g = (green <= 0.0031308) ? 12.92 * green : (1.0 + 0.055) * Math.pow(green, (1.0 / 2.4)) - 0.055;
+  const b = (blue <= 0.0031308) ? 12.92 * blue : (1.0 + 0.055) * Math.pow(blue, (1.0 / 2.4)) - 0.055;
+
+  return { r: r * 255, g: g * 255, b: b * 255, a: 1.0 };
 }

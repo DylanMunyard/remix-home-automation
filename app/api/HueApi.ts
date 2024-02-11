@@ -313,6 +313,9 @@ async function get<T>(api: string) : Promise<HueResponse<T>> {
         if (response.errors.length > 0 || response.data.length === 0) {
             console.error(`Error from api ${api}:`, response.errors.join(", "));
         }
+
+        /*await new Promise((resolve) => setTimeout(resolve, 3000));*/
+
         return response;
     } catch (error) {
         console.error(`Hue API Error: ${error}`);

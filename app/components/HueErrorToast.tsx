@@ -1,7 +1,7 @@
 import {HiExclamation} from "react-icons/hi";
 import {Toast} from "flowbite-react";
 import React, {useState} from "react";
-import {HueError} from "~/api/HueApi";
+import {HueError} from "~/api/HueApi.server";
 
 export default function HueErrorToast({ errors } : { errors: HueError[] }) {
   const [uiErrors, setUiErrors] = useState<HueError[]>([]);

@@ -1,5 +1,5 @@
 import {ActionFunctionArgs, defer, json, MetaFunction, TypedDeferredData} from "@remix-run/node";
-import {Await, Link, Outlet, useFetcher, useLoaderData} from "@remix-run/react";
+import {Await, Link, Outlet, useAsyncValue, useFetcher, useLoaderData} from "@remix-run/react";
 import ErrorComponent from "~/components/ErrorBoundary";
 import {
   RangeSlider,
@@ -19,10 +19,10 @@ import {
   GroupedLight,
   getGroupedLight,
   updateGroupedLight, HueError
-} from "~/api/HueApi";
+} from "~/api/HueApi.server";
 import React, {Suspense, useState} from "react";
 import HueErrorToast from "~/components/HueErrorToast";
-import {HiOutlineHome} from "react-icons/hi2";
+import {HiOutlineHome} from "react-icons/hi2"
 
 export const meta: MetaFunction = () => {
   return [
@@ -31,7 +31,7 @@ export const meta: MetaFunction = () => {
   ];
 };
 
-type ApiData = { lights: Light[], zones: Zone[], groups: GroupedLight[]  };
+type ApiData = { errors: HueError[], lights: Light[], zones: Zone[], groups: GroupedLight[]  };
 
 interface Model extends Zone {
   group: GroupedLight | undefined,
@@ -48,7 +48,7 @@ export async function loader() : Promise<TypedDeferredData<{ data: Promise<ApiDa
   } catch (ex) {
     console.error(ex);
     return defer({
-      data: new Promise((resolve) => resolve({lights: [], zones: [], groups: []}))
+      data: new Promise((resolve) => resolve({errors: [{ description: "A developer error 🔥 may have just happened" }], lights: [], zones: [], groups: []}))
     });
   }
 }
@@ -344,14 +344,37 @@ function SkeletonTable({rows}: { rows: number }) {
 }
 
 function HomeNoBueno() {
+  const asyncValue = useAsyncValue() as ApiData;
+
+  console.warn(asyncValue);
+
   return (
     <div className="mx-auto flex items-center justify-center h-screen">
-      <section className="bg-white dark:bg-gray-500 max-w-[300px]">
-        <div className="py-8 px-4 max-w-screen-xl text-center lg:py-16">
+      <section className="bg-white dark:bg-gray-500 max-w-[450px]">
+        <div className="py-8 px-4 max-w-screen-xl text-center lg:py-8">
           <HiOutlineHome size={192} className="mx-auto block fill-green-300"/>
           <p className="text-lg font-normal text-gray-800 lg:text-xl dark:text-white">
-            Looks like your home has no lights (or we can't connect to the bridge)
+            Looks like your home has no lights (or there was an error while connecting to the bridge)
           </p>
+          {asyncValue.errors ?
+            <div
+              className="mt-5 flex text-left p-4 mb-4 text-sm text-red-800 rounded-lg bg-red-50 dark:bg-gray-800 dark:text-red-400"
+              role="alert">
+              <svg className="flex-shrink-0 inline w-4 h-4 me-3 mt-[2px]" aria-hidden="true"
+                   xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
+                <path
+                  d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5ZM9.5 4a1.5 1.5 0 1 1 0 3 1.5 1.5 0 0 1 0-3ZM12 15H8a1 1 0 0 1 0-2h1v-3H8a1 1 0 0 1 0-2h2a1 1 0 0 1 1 1v4h1a1 1 0 0 1 0 2Z"/>
+              </svg>
+              <span className="sr-only">Hue Errors</span>
+              <div>
+                <span className="font-medium">Unable to load your lights because:</span>
+                <ul className="space-y-4 mt-1.5 list-disc list-inside">
+                  {asyncValue.errors.map((error, idx) => (
+                    <li key={idx}>{error.description}</li>
+                  ))}
+                </ul>
+              </div>
+            </div> : null}
         </div>
       </section>
     </div>

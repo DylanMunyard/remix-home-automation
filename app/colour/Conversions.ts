@@ -1,5 +1,5 @@
 import {RgbaColor} from "@uiw/color-convert/src";
-import {XyPosition} from "~/api/HueApi";
+import {XyPosition} from "~/api/HueApi.server";
 
 export function rgbaToXy(rgba: RgbaColor) : { x: number, y: number } {
   /* handy function to check your values: https://viereck.ch/hue-xy-rgb/ */

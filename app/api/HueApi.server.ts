@@ -237,7 +237,7 @@ const agent = new https.Agent({
     rejectUnauthorized: false
 });
 
-export async function getHome() : Promise<{ lights: Light[], zones: Zone[], groups: GroupedLight[] }> {
+export async function getHome() : Promise<{ errors: HueError[], lights: Light[], zones: Zone[], groups: GroupedLight[] }> {
     try {
         const lights = get<Light>(`${apiBase}/resource/light`);
         const zones = get<Zone>(`${apiBase}/resource/zone`);
@@ -247,14 +247,14 @@ export async function getHome() : Promise<{ lights: Light[], zones: Zone[], grou
 
         return await Promise.all([lights, zones, groups])
           .then(([lights, zones, groups]) => {
-              return {lights: lights.data, zones: zones.data, groups: groups.data};
+              return {errors: [...lights.errors, ...zones.errors, ...groups.errors], lights: lights.data, zones: zones.data, groups: groups.data};
           }).catch(reason => {
               console.error(`get home data failed: ${reason}`);
-              return {lights: [], zones: [], groups: []};
+              return {errors: [{description: reason}], lights: [], zones: [], groups: []};
           });
     } catch (ex) {
         console.error(ex);
-        return new Promise((resolve) => resolve({lights: [], zones: [], groups: []}));
+        return new Promise((resolve) => resolve({errors: [{description: "Looks like an error that needs a developer to fix"}], lights: [], zones: [], groups: []}));
     }
 }
 
@@ -318,7 +318,7 @@ async function get<T>(api: string) : Promise<HueResponse<T>> {
 
         return response;
     } catch (error) {
-        console.error(`Hue API Error: ${error}`);
-        return { errors: [{ description: "Hue API error" }], data: [] };
+        console.error(`Hue GET API Error: ${error}`);
+        return { errors: [{ description: `${api} failed. ${error}` }], data: [] };
     }
 }

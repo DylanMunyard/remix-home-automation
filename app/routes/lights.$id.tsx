@@ -1,7 +1,7 @@
-import {Await, useAsyncValue, useFetcher, useLoaderData, useNavigate} from "@remix-run/react";
+import {Await, useFetcher, useLoaderData, useNavigate} from "@remix-run/react";
 import Wheel from "@uiw/react-color-wheel";
 import {ActionFunctionArgs, defer, json, LoaderFunctionArgs, TypedDeferredData} from "@remix-run/node";
-import {getLight, HueResponse, Light, updateLight} from "~/api/HueApi";
+import {getLight, HueResponse, Light, updateLight} from "~/api/HueApi.server";
 import React, {Suspense, useState, useMemo } from "react";
 import {Label, Modal, RangeSlider, Spinner, ToggleSwitch} from "flowbite-react";
 import {rgbaToHsva, hsvaToRgba, ColorResult, HsvaColor} from "@uiw/color-convert";
@@ -16,9 +16,9 @@ export async function loader({
   return defer({ data: light });
 }
 
-export const action = async ({
- request,
-}: ActionFunctionArgs) => {
+  export const action = async ({
+   request,
+  }: ActionFunctionArgs) => {
   const body = await request.formData();
   const id = body.get("id") as string;
   const brightness = body.get("brightness") as string;

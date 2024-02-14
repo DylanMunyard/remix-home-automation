@@ -34,3 +34,12 @@ Make sure to deploy the output of `npm run build`
 
 - `build/server`
 - `build/client`
+
+## TODOs
+Colour temperature selection
+
+#82dce6 -> #e6bd3f translates to colour temps between 222 and 454 (you can get this from `color_temperature.mirek_schema.mirek_(minimum|maximum)`)
+
+Use this site to generate the gradient https://cssgradient.io/
+
+![img.png](colour_temperature.png)
